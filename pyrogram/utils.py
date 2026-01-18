@@ -49,6 +49,58 @@ async def ainput(prompt: str = "", *, hide: bool = False):
         return await asyncio.get_event_loop().run_in_executor(executor, func)
 
 
+async def _get_reply_message_parameters(
+    client: "pyrogram.Client",
+    message_thread_id: int = None,
+    reply_parameters: "types.ReplyParameters" = None
+) -> "raw.base.InputReplyTo":
+    reply_to = raw.types.InputReplyToMessage(
+        reply_to_msg_id=0
+    )
+    if not reply_parameters:
+        if message_thread_id:
+            reply_to = raw.types.InputReplyToMessage(
+                reply_to_msg_id=message_thread_id,
+                top_msg_id=message_thread_id
+            )
+        return reply_to
+    if (
+        reply_parameters and
+        reply_parameters.story_id and
+        reply_parameters.chat_id
+    ):
+        return raw.types.InputReplyToStory(
+            peer=await client.resolve_peer(reply_parameters.chat_id),
+            story_id=reply_parameters.story_id
+        )
+    reply_to_message_id = reply_parameters.message_id
+    reply_to = raw.types.InputReplyToMessage(
+        reply_to_msg_id=reply_to_message_id
+    )
+    if message_thread_id:
+        reply_to.top_msg_id = message_thread_id
+    # TODO
+    quote = reply_parameters.quote
+    if quote is not None:
+        quote_parse_mode = reply_parameters.quote_parse_mode
+        quote_entities = reply_parameters.quote_entities
+        message, entities = (await parse_text_entities(
+            client,
+            quote,
+            quote_parse_mode,
+            quote_entities
+        )).values()
+        reply_to.quote_text = message
+        reply_to.quote_entities = entities
+    if reply_parameters.chat_id:
+        reply_to.reply_to_peer_id = await client.resolve_peer(reply_parameters.chat_id)
+    if reply_parameters.quote_position:
+        reply_to.quote_offset = reply_parameters.quote_position
+    if reply_parameters.checklist_task_id:
+        reply_to.todo_item_id = reply_parameters.checklist_task_id
+    return reply_to
+
+
 def get_input_media_from_file_id(
     file_id: str,
     expected_file_type: FileType = None,
@@ -258,6 +310,30 @@ def get_peer_type(peer_id: int) -> str:
         return "user"
 
     raise ValueError(f"Peer id invalid: {peer_id}")
+
+
+def get_reply_to(
+    reply_to_message_id: Optional[int] = None,
+    message_thread_id: Optional[int] = None,
+    reply_to_peer: Optional[raw.base.InputPeer] = None,
+    quote_text: Optional[str] = None,
+    quote_entities: Optional[List[raw.base.MessageEntity]] = None,
+    reply_to_story_id: Optional[int] = None
+) -> Optional[Union[raw.types.InputReplyToMessage, raw.types.InputReplyToStory]]:
+    """Get InputReply for reply_to argument"""
+    if all((reply_to_peer, reply_to_story_id)):
+        return raw.types.InputReplyToStory(user_id=reply_to_peer, story_id=reply_to_story_id)  # type: ignore[arg-type]
+
+    if any((reply_to_message_id, message_thread_id)):
+        return raw.types.InputReplyToMessage(
+            reply_to_msg_id=reply_to_message_id or message_thread_id,  # type: ignore[arg-type]
+            top_msg_id=message_thread_id if reply_to_message_id else None,
+            reply_to_peer_id=reply_to_peer,
+            quote_text=quote_text,
+            quote_entities=quote_entities,
+        )
+
+    return None
 
 
 def get_channel_id(peer_id: int) -> int:
