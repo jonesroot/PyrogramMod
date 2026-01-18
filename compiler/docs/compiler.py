@@ -506,6 +506,7 @@ def pyrogram_api():
             Sticker
             Game
             WebPage
+            TextQuote
             Poll
             PollOption
             Dice
