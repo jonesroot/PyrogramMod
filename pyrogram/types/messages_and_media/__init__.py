@@ -69,6 +69,7 @@ __all__ = [
     "Reaction",
     "WebAppData",
     "MessageReactions",
+    "TextQuote",
     "Story",
     "Giveaway",
     "AlternativeVideo"
