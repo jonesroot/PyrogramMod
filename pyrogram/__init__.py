@@ -16,11 +16,16 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = "2.3.1"
+__version__ = "2.3.2"
 __license__ = "GNU Lesser General Public License v3.0 (LGPL-3.0)"
 __copyright__ = "Copyright (C) 2017-present Dan <https://github.com/delivrance>"
 
 from concurrent.futures.thread import ThreadPoolExecutor
+from . import raw, types, filters, handlers, emoji, enums, errors
+from .client import Client
+from .sync import idle, compose
+import asyncio as _asyncio
+from contextlib import suppress
 
 
 class StopTransmission(Exception):
@@ -34,9 +39,27 @@ class StopPropagation(StopAsyncIteration):
 class ContinuePropagation(StopAsyncIteration):
     pass
 
-
-from . import raw, types, filters, handlers, emoji, enums
-from .client import Client
-from .sync import idle, compose
-
 crypto_executor = ThreadPoolExecutor(1, thread_name_prefix="CryptoWorker")
+
+
+with suppress(ImportError):
+    import uvloop as _uvloop
+
+    _asyncio.set_event_loop_policy(_uvloop.EventLoopPolicy())
+
+
+__all__ = [
+    "Client",
+    "ContinuePropagation",
+    "StopPropagation",
+    "StopTransmission",
+    "compose",
+    "crypto_executor",
+    "enums",
+    "errors",
+    "filters",
+    "handlers",
+    "idle",
+    "raw",
+    "types",
+]
